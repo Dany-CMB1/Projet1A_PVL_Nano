@@ -10,19 +10,22 @@
 #define CALIBRAGE_TEMPS 5
 #define CALIBRAGE_POT 6
 #define TOP_DEPART 7
+#define FIN_COURSE 8
+#define hc05BR 38400
+#define nanoBR 9600
 
 //Déclaration des pins sur lesquels les capteurs sont branchés
 int GLED = 4;
-int Laser = 3;
-int LightSensor = 1;
+int Laser = 6;
+int LightSensor = 7;
 int Pot = 5;
 
 //Initialisation des variables
 bool currStatus;
 bool prevStatus;
 bool chrono = 0;
-int nb_fd, nb_fm;
-int seuil = 0, pot = 0;
+int nb_fd=0, nb_fm=0;
+int seuil = 600, pot = 0;
 double tps, start;
 
 SoftwareSerial hc05(txPin, rxPin); //Tx | Rx pdv HC05
@@ -30,20 +33,19 @@ SoftwareSerial hc05(txPin, rxPin); //Tx | Rx pdv HC05
 void setup()
 {
   // Init Serial at 115200 Baud Rate 
-  Serial.begin(115200); 
+  Serial.begin(9600); 
+  hc05.begin(hc05BR);
   //Déclaration de l'état des capteurs digitaux (entrée ou sortie)
   pinMode(Laser, OUTPUT); digitalWrite(Laser, HIGH); 
-  
   pinMode(GLED, OUTPUT); 
   digitalWrite(GLED, LOW); 
-
-  calibratePot();
-  calibrateTime();
 }
 
 
 void loop()
 {
+ /* calibratePot();
+  Serial.println(seuil);*/
   //Acquisition des états logiques des BO (1: passant, 0: bloqué)
   GetSensorStatus();
 
@@ -54,17 +56,20 @@ void loop()
   else if (currStatus && !prevStatus) {nb_fm++;}
   
   //Détection du 1er front montant de la BO de départ; démarrage du chrono
-  if (nb_fm == 1 && !chrono) {chrono = 1; hc05.write(TOP_DEPART);}
-
+  if (nb_fd >= 1 && !chrono) {
+    chrono = 1; 
+    hc05.write(TOP_DEPART);
+    }
+  //Serial.println(nb_fd);
+  if(hc05.available() && hc05.read()==FIN_COURSE){
+    nb_fd=0;
+    nb_fm=0;
+    chrono=0;
+  }
 
 }
 
-//Unsigned long: 32 bis soit 4 octets mais serial.read() ne permet que d'écrire un octet
-//Ecriture en plusieurs paquets d'un octet
-void  writeUnsignedLong(unsigned long msg)
-{
-  for (int i=0; i<sizeof(unsigned long);i++) hc05.write(msg<<(sizeof(int)*i));
-}
+
 
 void GetSensorStatus()
 {
@@ -73,22 +78,15 @@ void GetSensorStatus()
   //Conversion analogique --> logique
   if (analogRead(LightSensor)>seuil) currStatus=1; 
   else currStatus=0; 
+  Serial.println(analogRead(LightSensor));
 }
 
-void calibrateTime()
- {
-  //Attente synchronisation demande calibrage temps
-  while(!(hc05.available() && hc05.read()==CALIBRAGE_TEMPS)){hc05.write(CALIBRAGE_TEMPS);}
-
-  writeUnsignedLong(millis());
- }
 
  void calibratePot()
  {
-  //Attente synchronisation demande réglage potentiomètre
-  while(!(hc05.available() && hc05.read()==CALIBRAGE_POT)){hc05.write(CALIBRAGE_POT);}
-
-  //Attente réponse
-  while(!hc05.available()){}
-  seuil = hc05.read();
- }
+  if (hc05.available()){
+  String result=hc05.readString();
+  seuil=result.toInt();
+  Serial.println(seuil);
+  }
+}
