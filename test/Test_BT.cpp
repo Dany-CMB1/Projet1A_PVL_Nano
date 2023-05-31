@@ -22,15 +22,8 @@ void setup()
   Serial.begin(nanoBR);
   pinMode(keyPin, OUTPUT);
 
-  //Choix du mode de fonctionnement
-  while (attente)
-  {
-    Serial.print("Choose mode (at/data): ");
-    while (Serial.available() ==0) {} //Boucle d'attente d'une entrée sur le moniteur série
-    choice = Serial.readString(); choice.trim(); Serial.println(choice);
-    if (choice=="at") {digitalWrite(keyPin, HIGH); Serial.println("Enter AT commands:"); attente=false;}
-    else if (choice=="data") {digitalWrite(keyPin, LOW); attente=false;}
-  }
+  digitalWrite(keyPin, LOW); attente=false;
+
 
   hc05.begin(hc05BR);
 }

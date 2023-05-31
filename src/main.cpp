@@ -70,7 +70,6 @@ void loop()
 }
 
 
-
 void GetSensorStatus()
 {
   prevStatus = currStatus;
